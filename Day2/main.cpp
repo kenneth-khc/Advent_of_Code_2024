@@ -5,11 +5,10 @@
 #include <vector>
 #include <algorithm>
 
-bool    is_safe(std::string& report)
+std::vector<int>	vectorize(std::string& report)
 {
 	std::stringstream	ss{report};
 	std::vector<int>	v;
-	std::vector<int>	v_difference;
 
 	std::string level;
 	ss >> level;
@@ -19,19 +18,43 @@ bool    is_safe(std::string& report)
 		v.push_back(num);
 		ss >> level;
 	}
-	auto	begin = v.begin();
-	auto	it = ++begin;
-	auto	end = v.end();
-	std::adjacent_difference(begin, end, begin);
-	bool	difference_ok = std::all_of(it, end, [](int x)
-	{
-		return abs(x) >= 1 && abs(x) <= 3;
-	});
-	bool	same_sign = std::all_of(begin, end, [](int x)
-	{
+	return (v);
+}
 
-	});
-	return (false);
+bool    is_safe(std::string& report)
+{
+	std::vector<int>	v = vectorize(report);
+
+	auto	begin = v.begin();
+	auto	it = begin + 1;
+	auto	end = v.end();
+	int		corrected{0};
+
+	std::adjacent_difference(begin, end, begin);
+
+	for (auto left = it, right = it + 1; left != end; ++left, ++right)
+	{
+		int&	lhs = *left;
+		int&	rhs = *right;
+		
+		if (abs(lhs) == 0 || abs(lhs) > 3)
+		{
+			++corrected;
+		}
+		if (!((lhs < 0) == (rhs < 0)))
+		{
+			++corrected;
+		}
+	}
+	
+	if (corrected <= 1)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 int main()
@@ -49,6 +72,5 @@ int main()
 			safe_count++;
         }
     }
-
-
+	std::cout << "Safe count: " << safe_count << std::endl;
 }
