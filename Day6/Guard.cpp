@@ -12,18 +12,21 @@ step_x{0},
 step_y{-1}
 { }
 
-void    Guard::move(std::vector<std::string>& map)
+void    Guard::move(Map& map)
 {
 	size_t	new_x = x + step_x;
 	size_t	new_y = y + step_y;
 
-	if (new_y >= map.size() ||
-		new_x >= map[y].size())
+	if (new_y >= map.get_height() ||
+		new_x >= map.get_width())
 	{
+		map.print();
+		std::cout << "Guard exits map at " << "x:" << x << " y:" << y << std::endl;
 		std::cout << "Guard has travelled " << unique_tiles_travelled
 				  << " unique tiles" << std::endl;
 		std::exit(0);
 	}
+	std::cout << "NY: " << new_y << " NX: " << new_x << std::endl;
 	if (map[new_y][new_x] == '#')
 	{
 		change_direction();
@@ -39,9 +42,11 @@ void    Guard::move(std::vector<std::string>& map)
 		{
 			map[y][x] = 'X';
 			++unique_tiles_travelled;
+			map.mark(y, x);
 		}
 		map[new_y][new_x] = 'X';
 		++unique_tiles_travelled;
+		map.mark(new_x, new_y);
 		x = new_x;
 		y = new_y;
 	}

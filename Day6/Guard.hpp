@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include "Map.hpp"
 
 class Guard
 {
@@ -19,7 +20,7 @@ public:
     Guard(int, int);
 	~Guard() = default;
 
-    void    move(std::vector<std::string>&);
+    void    move(Map&);
     void    change_direction();
 };
 
