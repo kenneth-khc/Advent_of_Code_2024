@@ -11,7 +11,9 @@ public:
     Antinode(/* args */) = default;
     Antinode(int, int); 
     ~Antinode() = default;
-    bool operator==(const Antinode&) const;
+    bool	operator==(const Antinode&) const;
+    bool	operator<(const Antinode&) const;
+	bool	operator>(const Antinode&) const;
 };
 
 #endif

@@ -11,3 +11,13 @@ bool    Antinode::operator==(const Antinode& rhs) const
 {
     return this->x == rhs.x && this->y == rhs.y;
 }
+
+bool    Antinode::operator<(const Antinode& rhs) const
+{
+    return this->x < rhs.x || (this->x == rhs.x && this->y < rhs.y);
+}
+
+bool    Antinode::operator>(const Antinode& rhs) const
+{
+    return this->x > rhs.x || (this->x == rhs.x && this->y > rhs.y);
+}

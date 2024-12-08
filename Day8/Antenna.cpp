@@ -23,9 +23,9 @@ Antenna::get_distance(const Antenna& a1, const Antenna& a2)
 }
 
 std::pair<std::size_t, std::size_t>
-Antenna::calculate_antinode(std::pair<int, int> distance) const
+Antenna::calculate_antinode(std::pair<int, int> distance, int multiplier = 1) const
 {
-    std::size_t new_x = x + distance.first; 
-    std::size_t new_y = y + distance.second;
+    std::size_t new_x = x + (distance.first * multiplier);
+    std::size_t new_y = y + (distance.second * multiplier);
     return std::make_pair(new_x, new_y);
 }

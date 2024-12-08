@@ -5,30 +5,55 @@
 #include <vector>
 #include <utility>
 #include <optional>
+#include <set>
 #include "Antenna.hpp"
 #include "Antinode.hpp"
 
-/* get the antinode of 2 antennas with the same frequency by 
+using std::size_t;
+
+/* get the antinodes of 2 antennas with the same frequency by 
 finding their distance apart */
-std::optional<Antinode>	get_antinode(const Antenna& a1, const Antenna& a2,
+std::optional<std::set<Antinode>>
+get_antinodes(const Antenna& a1, const Antenna& a2,
 std::vector<std::string>& map)
 {
+	std::set<Antinode>			valid_antinodes;
 	std::pair<int, int>	distance = Antenna::get_distance(a1, a2);
-	std::pair<std::size_t, std::size_t> node_pos
-	= a2.calculate_antinode(distance);
+	std::pair<int, int>	inversed
+		= std::make_pair<int, int>(-distance.first, -distance.second);
 
-	if (node_pos.second >= map.size() ||
-		node_pos.first >= map[0].size())
+	std::pair<size_t, size_t>	new_index;
+	int	i = 1;
+	new_index = a1.calculate_antinode(distance, i);
+	while (new_index.second < map.size() && new_index.first < map[0].size())
+	{
+		++i;
+		valid_antinodes.insert(Antinode(new_index.first, new_index.second));
+		new_index = a1.calculate_antinode(distance, i);
+	}
+	i = 1;
+	new_index = a2.calculate_antinode(inversed, i);
+	while (new_index.second < map.size() && new_index.first < map[0].size())
+	{
+		i++;
+		valid_antinodes.insert(Antinode(new_index.first, new_index.second));
+		new_index = a2.calculate_antinode(inversed, i);
+	}
+
+	if (valid_antinodes.empty())
 	{
 		return {};
 	}
-	return Antinode(node_pos.first, node_pos.second);
+	else
+	{
+		return std::optional(valid_antinodes);
+	}
 }
 
-std::vector<Antinode>
+std::set<Antinode>
 find_antinodes(std::vector<Antenna>& antennas, std::vector<std::string>& map)
 {
-	std::vector<Antinode>	antinodes;
+	std::set<Antinode>	antinodes;
 
 	for (const auto& a1 : antennas)
 	{
@@ -38,12 +63,12 @@ find_antinodes(std::vector<Antenna>& antennas, std::vector<std::string>& map)
 				continue ;
 			if (Antenna::same_frequency(a1, a2))
 			{
-				auto node = get_antinode(a1, a2, map);
-				if (node)
+				auto	res = get_antinodes(a1, a2, map);
+				if (res)
 				{
-					if (std::find(antinodes.begin(), antinodes.end(), node.value()) == antinodes.end())
+					for (auto& node : res.value())
 					{
-						antinodes.push_back(node.value());					
+						antinodes.insert(node);
 					}
 				}
 			}
@@ -54,10 +79,10 @@ find_antinodes(std::vector<Antenna>& antennas, std::vector<std::string>& map)
 
 int main()
 {
-    std::fstream				file{"example.txt"};
+    std::fstream				file{"input.txt"};
 	std::vector<std::string>	map;
 	std::vector<Antenna>		antennas;
-	std::vector<Antinode>		antinodes;
+	std::set<Antinode>			antinodes;
 
 	for (int y = 0; !file.eof(); y++)
 	{
