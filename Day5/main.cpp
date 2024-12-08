@@ -1,111 +1,96 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <unordered_map>
 #include <utility>
 #include <regex>
 #include <algorithm>
 
-std::map<int, std::vector<int>>
-get_page_rules(std::fstream& file)
-{
-	std::map<int, std::vector<int>>	page_rules;
-	std::regex	rule_pattern{"([\\d]+)\\|([\\d]+)"};
+using RuleMap = std::unordered_map<int, std::vector<int>>;
 
-	std::string	buffer;
-	std::getline(file, buffer);
-	while (!buffer.empty())
+RuleMap
+parse_rules(std::fstream& file);
+
+std::vector<int>
+get_update(std::fstream& file);
+
+int	main()
+{
+	std::fstream		file {"input.txt"};
+	RuleMap				rules = parse_rules(file);
+	std::vector<int>	update;
+	int					valid_sum {0};
+	int					invalid_sum {0};
+	// int	count = 0;
+
+	while (!(update = get_update(file)).empty())
 	{
-		std::smatch	match;
-		std::regex_search(buffer, match, rule_pattern);
-		int	num1 = std::stoi(match[1]);
-		int	num2 = std::stoi(match[2]);
-		if (page_rules.find(num1) == page_rules.end())
+		bool	fixed = false;
+		for (size_t curr = 0; curr < update.size(); ++curr)
 		{
-			page_rules.insert(std::make_pair(num1, std::vector<int>()));
-		}
-		page_rules[num1].push_back(num2);
-		std::getline(file, buffer);
-	}
-	return page_rules;
-}
-
-using	match_it = std::regex_iterator<std::string::const_iterator>;
-
-std::vector<int>	vectorize_production(std::string& line)
-{
-	std::vector<int>	production;
-	std::regex			number_pattern{"[\\d]+"};
-
-	match_it	begin = std::sregex_iterator(line.begin(),
-											 line.end(),
-											 number_pattern);
-	match_it	end = std::sregex_iterator();
-	for (match_it current = begin; current != end; ++current)
-	{
-		int	num = std::stoi(current->str());
-		production.push_back(num);
-	}
-	return production;
-}
-
-// void
-// fix_invalid
-// (
-// std::vector<int> prod,
-// std::map<int, std::vector<int>> page_rules,
-// int& invalid_sum
-// )
-// {
-// 	std::vector<int>::iterator	rules_begin = page_rules.begin();
-// 	std::vector<int>::iterator	rules_begin = page_rules.begin();
-// }
-
-int main()
-{
-    std::fstream					file{"input.txt"};
-	std::map<int, std::vector<int>>	page_rules = get_page_rules(file);
-
-	int	valid_sum{0};
-	int	fixed_invalid_sum{0};
-	for (std::string buffer; getline(file, buffer);)
-	{
-		std::vector<int>					prod = vectorize_production(buffer);
-		bool								valid = true;
-		std::vector<int>::iterator			begin = prod.begin();
-		std::vector<int>::reverse_iterator	rbegin = prod.rbegin();
-		std::vector<int>::reverse_iterator	rend = prod.rend();
-		while (rbegin != rend)
-		{
-			std::cout << *rbegin << std::endl;
-			int	key = *rbegin;
-			std::vector<int>::iterator	rules_begin = page_rules[key].begin();
-			std::vector<int>::iterator	rules_end = page_rules[key].end();
-			for (std::vector<int>::iterator curr{begin}; curr != rbegin.base(); ++curr)
+			const int	current_num = update[curr];
+			const std::vector<int>&	current_rule = rules[current_num];
+			for (size_t prev = 0; prev < curr; ++prev)
 			{
-				key = *rbegin;
-				auto found = std::find(rules_begin, rules_end, *curr);
-				if (found != rules_end)
+				const int&	current_check = update[prev]; (void)current_check;
+				if (std::find(current_rule.begin(), current_rule.end(), current_check) != current_rule.end())
 				{
-					valid = false;
-					auto prod_to_fix = std::find(begin, prod.end(), *found);
-					prod.insert(prod_to_fix, key);
-					prod.erase(rbegin.base());
-					rbegin = prod.rbegin();
+					fixed = true;
+					update.erase(update.begin() + curr);
+					update.insert(std::next(update.begin(), prev), current_num);
 				}
 			}
-			++rbegin;
 		}
-		auto	mid = prod.begin() + prod.size() / 2;
-		if (valid)
+		if (fixed)
 		{
-			valid_sum += *mid;
+			invalid_sum += *(update.begin() + update.size() / 2);
 		}
 		else
 		{
-			fixed_invalid_sum += *mid;
+			valid_sum += *(update.begin() + update.size() / 2);
 		}
 	}
-	std::cout << "Valid sum is " << valid_sum << std::endl;
-	std::cout << "Fixed invalid sum is " << fixed_invalid_sum << std::endl;
-	return 0;
+	std::cout << "Sum of the midpoint of valid numbers: " << valid_sum << '\n'
+			  << "Sum of the midpoint of invalid numbers: " << invalid_sum << std::endl;
+}
+
+RuleMap
+parse_rules(std::fstream& file)
+{
+	std::string	line;
+	RuleMap		rules;
+	std::regex	rule_pattern {"((\\d+)\\|(\\d+))"};
+
+	while (file)
+	{
+		std::getline(file, line);
+		if (line.empty())
+			break ;
+		std::smatch	match;
+		std::regex_match(line, match, rule_pattern);
+		int	key = std::stoi(match[2]);
+		int	value = std::stoi(match[3]);
+		rules[key].push_back(value);
+	}
+	return rules;
+}
+
+std::vector<int>
+get_update(std::fstream& file)
+{
+	std::string			line;
+	std::regex			number_pattern {"(\\d+)"};
+	std::vector<int>	update;
+	if (file >> line)
+	{
+		auto current = std::sregex_iterator(line.begin(), line.end(), number_pattern);
+		auto end = std::sregex_iterator();
+		while (current != end)
+		{
+			std::smatch	match = *current;
+			update.push_back(std::stoi(match.str()));
+			++current;
+		}
+	}
+	return update;
 }
