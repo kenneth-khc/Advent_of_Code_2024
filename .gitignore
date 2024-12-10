@@ -2,3 +2,5 @@ a.out
 main
 launch.json
 *.json
+input.txt
+example.txt

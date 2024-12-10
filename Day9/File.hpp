@@ -1,6 +1,7 @@
 #ifndef FILE_HPP
 #define FILE_HPP
 
+#include <string>
 #include "Block.hpp"
 
 class File: public Block
@@ -8,11 +9,12 @@ class File: public Block
 private:
 
 public:
-    int id;
     File(/* args */) = default;
-    File(int, int);
     ~File() = default;
-    void	visualize() const override;
+    File(int, std::size_t);
+
+    void    visualize() const override;
+    std::string get_type() const override;
 };
 
 #endif

@@ -1,9 +1,8 @@
 #include <iostream>
 #include "File.hpp"
 
-File::File(int id, int size):
-Block(size),
-id(id)
+File::File(int id, std::size_t size):
+Block(id, size)
 {
 
 }
@@ -20,4 +19,9 @@ void    File::visualize() const
         }
     }
     std::cout << "|";
+}
+
+std::string File::get_type() const
+{
+    return "File";
 }

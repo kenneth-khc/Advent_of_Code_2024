@@ -1,7 +1,8 @@
 #include "Block.hpp"
 
-Block::Block(int count):
-size(count)
+Block::Block(int id, std::size_t size):
+id(id),
+size(size)
 {
 
 }
