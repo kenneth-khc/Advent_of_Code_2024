@@ -1,57 +1,73 @@
 #include <iostream>
 #include <fstream>
-#include <map>
 #include <unordered_map>
 #include <utility>
 #include <regex>
 #include <algorithm>
 
-using RuleMap = std::unordered_map<int, std::vector<int>>;
+bool
+is_sorted(std::vector<int>&);
 
+bool
+compare(const int&, const int&);
+
+// map a number to an array of all the numbers that it's lesser than
+using RuleMap = std::unordered_map<int, std::vector<int>>;
 RuleMap
-parse_rules(std::fstream& file);
+parse_rules(std::fstream&);
 
 std::vector<int>
-get_update(std::fstream& file);
+get_update(std::fstream&);
+
+RuleMap rules;
 
 int	main()
 {
 	std::fstream		file {"input.txt"};
-	RuleMap				rules = parse_rules(file);
 	std::vector<int>	update;
 	int					valid_sum {0};
 	int					invalid_sum {0};
-	// int	count = 0;
 
+	rules = parse_rules(file);
 	while (!(update = get_update(file)).empty())
 	{
-		bool	fixed = false;
-		for (size_t curr = 0; curr < update.size(); ++curr)
-		{
-			const int	current_num = update[curr];
-			const std::vector<int>&	current_rule = rules[current_num];
-			for (size_t prev = 0; prev < curr; ++prev)
-			{
-				const int&	current_check = update[prev]; (void)current_check;
-				if (std::find(current_rule.begin(), current_rule.end(), current_check) != current_rule.end())
-				{
-					fixed = true;
-					update.erase(update.begin() + curr);
-					update.insert(std::next(update.begin(), prev), current_num);
-				}
-			}
-		}
-		if (fixed)
-		{
-			invalid_sum += *(update.begin() + update.size() / 2);
-		}
-		else
-		{
-			valid_sum += *(update.begin() + update.size() / 2);
-		}
+        bool    sorted = is_sorted(update);
+        if (sorted)
+        {
+		 	valid_sum += *(update.begin() + update.size() / 2);
+        }
+        else
+        {
+            // wtf I can just call std::sort and save all my troubles?
+            std::sort(update.begin(), update.end(), compare);
+            // crazy
+		 	invalid_sum += *(update.begin() + update.size() / 2);
+        }
 	}
-	std::cout << "Sum of the midpoint of valid numbers: " << valid_sum << '\n'
-			  << "Sum of the midpoint of invalid numbers: " << invalid_sum << std::endl;
+	std::cout << "Sum of the midpoint of valid updates: " << valid_sum << '\n'
+			  << "Sum of the midpoint of invalid but fixed updates: " << invalid_sum << std::endl;
+}
+
+bool    is_sorted(std::vector<int>& update)
+{
+    for (size_t i = 0; i < update.size() - 1; ++i)
+    {
+        if (compare(update[i], update[i + 1]) == false)
+            return false;
+    }
+    return true;
+}
+
+bool
+compare(const int& a, const int& b)
+{
+    std::vector<int>&   greater = rules[a];
+    auto lesser_than = std::find(greater.begin(), greater.end(), b);
+    if (lesser_than != greater.end())
+    {
+        return true;
+    }
+    return false;
 }
 
 RuleMap
