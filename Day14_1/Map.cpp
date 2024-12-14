@@ -37,3 +37,22 @@ void	Map::visualize()
 		std::cout << '\n';
 	}
 }
+
+void	Map::visualize(std::ofstream& outfile)
+{
+	for (int y = 0; y < height; ++y)
+	{
+		for (int x = 0; x < width; ++x)
+		{
+			if (layout[y][x] == 0)
+			{
+				outfile << '.';
+			}
+			else
+			{
+				outfile << layout[y][x];
+			}
+		}
+		outfile << '\n';
+	}
+}

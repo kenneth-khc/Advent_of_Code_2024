@@ -32,19 +32,18 @@ int	main()
 {
 	Map	map(101, 103);
 	std::vector<Robot>	robots = parse_input("input.txt");
-	int	iteration = 1;
-	for (;;)
+	for (int iteration = 1; iteration < 10000; ++iteration)
 	{
-		std::cout << "Iteration " << iteration++ << '\n';
+		std::cout << "Iteration " << iteration << '\n';
+		std::ofstream output {"iterations/iter" + std::to_string(iteration)};
 		Map	copy {101, 103};
 		for (auto& robot : robots)
 		{
 			robot.move(copy);
 			copy.increment_grid(robot.pos);
 		}
-		copy.visualize();
+		copy.visualize(output);
 		map = copy;
-		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 	int	quad_1 {0};
 	for (int y = 0; y < map.height / 2; ++y)
