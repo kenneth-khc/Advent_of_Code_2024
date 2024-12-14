@@ -4,3 +4,4 @@ launch.json
 *.json
 input.txt
 example.txt
+*.o
