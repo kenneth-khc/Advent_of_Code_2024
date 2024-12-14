@@ -4,8 +4,8 @@
 
 Map::Map():
 layout{0},
-width(11),
-height(7)
+width(101),
+height(103)
 { };
 
 Map::Map(int width, int height):
