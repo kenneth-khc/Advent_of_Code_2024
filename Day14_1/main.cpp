@@ -8,6 +8,38 @@
 #include "Robot.hpp"
 #include "Map.hpp"
 
+std::vector<Robot>
+parse_input(const std::string& filename);
+
+int
+count_robots_in_quadrant(Map& map, Point start, Point end);
+
+int	main()
+{
+	Map	map {101, 103};
+	std::vector<Robot>	robots = parse_input("input.txt");
+	for (int seconds = 0; seconds < 100; ++seconds)
+	{
+		Map	copy {101, 103};
+		for (auto& robot : robots)
+		{
+			robot.move(copy);
+			copy.increment_grid(robot.pos);
+		}
+		map = copy;
+	}
+	int	quad_1 = count_robots_in_quadrant(map, Point(map.width/2+1, 0), Point(map.width, map.height/2));
+	int	quad_2 = count_robots_in_quadrant(map, Point(0, 0), Point(map.width/2, map.height/2));
+	int	quad_3 = count_robots_in_quadrant(map, Point(0, map.height/2+1), Point(map.width/2, map.height));
+	int	quad_4 = count_robots_in_quadrant(map, Point(map.width/2+1, map.height/2+1), Point(map.width, map.height));
+	std::cout << "Q1: " << quad_1 << '\n';
+	std::cout << "Q2: " << quad_2 << '\n';
+	std::cout << "Q3: " << quad_3 << '\n';
+	std::cout << "Q4: " << quad_4 << '\n';
+	std::cout << "Safety factor: " << quad_1 * quad_2 * quad_3 * quad_4 << std::endl;
+	return 0;
+}
+
 std::vector<Robot>	parse_input(const std::string& filename)
 {
 	std::vector<Robot>	robots;
@@ -15,6 +47,7 @@ std::vector<Robot>	parse_input(const std::string& filename)
 	std::string			line;
 	std::smatch			match;
 	std::regex			pattern {R"(p=(\d+),(\d+) v=([-\d]+),([-\d]+))"};
+
 	std::getline(file, line);
 	while (file)
 	{
@@ -28,59 +61,19 @@ std::vector<Robot>	parse_input(const std::string& filename)
 	return robots;
 }
 
-int	main()
+int	count_robots_in_quadrant(Map& map, Point start, Point end)
 {
-	Map	map(101, 103);
-	std::vector<Robot>	robots = parse_input("input.txt");
-	for (int iteration = 1; iteration < 10000; ++iteration)
+	int	count {0};
+	int	y = start.y;
+	while (y != end.y)
 	{
-		std::cout << "Iteration " << iteration << '\n';
-		std::ofstream output {"iterations/iter" + std::to_string(iteration)};
-		Map	copy {101, 103};
-		for (auto& robot : robots)
+		int	x = start.x;
+		while (x != end.x)
 		{
-			robot.move(copy);
-			copy.increment_grid(robot.pos);
+			count += map.layout[y][x];
+			++x;
 		}
-		copy.visualize(output);
-		map = copy;
+		++y;
 	}
-	int	quad_1 {0};
-	for (int y = 0; y < map.height / 2; ++y)
-	{
-		for (int x = map.width / 2 + 1; x < map.width; ++x)
-		{
-			quad_1 += map.layout[y][x];
-		}
-	}
-	int	quad_2 {0};
-	for (int y = 0; y < map.height / 2; ++y)
-	{
-		for (int x = 0; x < map.width / 2; ++x)
-		{
-			quad_2 += map.layout[y][x];
-		}
-	}
-	int	quad_3 {0};
-	for (int y = map.height / 2 + 1; y < map.height; ++y)
-	{
-		for (int x = 0; x < map.width / 2; ++x)
-		{
-			quad_3 += map.layout[y][x];
-		}
-	}
-	int	quad_4 {0};
-	for (int y = map.height / 2 + 1; y < map.height; ++y)
-	{
-		for (int x = map.width / 2 + 1; x < map.width; ++x)
-		{
-			quad_4 += map.layout[y][x];
-		}
-	}
-	std::cout << "Q1: " << quad_1 << '\n';
-	std::cout << "Q2: " << quad_2 << '\n';
-	std::cout << "Q3: " << quad_3 << '\n';
-	std::cout << "Q4: " << quad_4 << '\n';
-	std::cout << "Safety factor: " << quad_1 * quad_2 * quad_3 * quad_4 << std::endl;
-	return 0;
+	return count;
 }
