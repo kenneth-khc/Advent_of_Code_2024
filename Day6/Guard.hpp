@@ -4,24 +4,27 @@
 #include <vector>
 #include <string>
 #include "Map.hpp"
+#include "Point.hpp"
 
 class Guard
 {
 private:
-    int x;
-    int y;
-    int unique_tiles_travelled;
-    int step_x;
-    int step_y;
+	Point	pos;	
+    int 	unique_tiles_travelled;
+    int 	step_x;
+    int 	step_y;
+	bool	escaped;
      
-
 public:
 	Guard(/* args */) = default;
     Guard(int, int);
 	~Guard() = default;
+	Guard(const Guard&) = default;
 
     void    move(Map&);
+	bool	in_map() const;
     void    change_direction();
+	Point	get_pos() const;
 };
 
 #endif

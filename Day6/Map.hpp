@@ -19,7 +19,7 @@ public:
 	size_t	get_width();
 	size_t	get_height();
 
-    std::string&	operator[](size_t idx);
+	char&	operator()(size_t x, size_t);
 };
 
 #endif

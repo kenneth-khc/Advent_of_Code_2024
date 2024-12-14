@@ -5,3 +5,4 @@ launch.json
 input.txt
 example.txt
 *.o
+[a-z]ay*

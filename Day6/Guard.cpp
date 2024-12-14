@@ -5,50 +5,50 @@
 
 
 Guard::Guard(int x, int y):
-x{x},
-y{y},
+pos(x, y),
 unique_tiles_travelled{0},
 step_x{0},
-step_y{-1}
+step_y{-1},
+escaped{false}
 { }
 
 void    Guard::move(Map& map)
 {
-	size_t	new_x = x + step_x;
-	size_t	new_y = y + step_y;
+	size_t	new_x = pos.x + step_x;
+	size_t	new_y = pos.y + step_y;
 
 	if (new_y >= map.get_height() ||
 		new_x >= map.get_width())
 	{
 		map.print();
-		std::cout << "Guard exits map at " << "x:" << x << " y:" << y << std::endl;
+		std::cout << "Guard exits map at " << "x:" << pos.x << " y:" << pos.y << std::endl;
 		std::cout << "Guard has travelled " << unique_tiles_travelled
 				  << " unique tiles" << std::endl;
-		std::exit(0);
+		escaped = true;
+		return ;
 	}
 	std::cout << "NY: " << new_y << " NX: " << new_x << std::endl;
-	if (map[new_y][new_x] == '#')
+	if (map(new_x, new_y) == '#')
 	{
 		change_direction();
 	}
-	else if (map[new_y][new_x] == 'X')
+	else if (map(new_x, new_y) == 'X')
 	{
-		x = new_x;
-		y = new_y;
+		pos.x = new_x;
+		pos.y = new_y;
 	}
-	else if (map[new_y][new_x] == '.')
+	else if (map(new_x, new_y) == '.')
 	{
-		if (map[y][x] == '^')
+		if (map(pos.x, pos.y) == '^')
 		{
-			map[y][x] = 'X';
+			map.mark(pos.x, pos.y);
 			++unique_tiles_travelled;
-			map.mark(y, x);
 		}
-		map[new_y][new_x] = 'X';
+		map(new_x, new_y) = 'X';
 		++unique_tiles_travelled;
 		map.mark(new_x, new_y);
-		x = new_x;
-		y = new_y;
+		pos.x = new_x;
+		pos.y = new_y;
 	}
 }
 
@@ -78,4 +78,14 @@ void	Guard::change_direction()
 		step_x = 0;
 		step_y = -1;
 	}
+}
+
+Point	Guard::get_pos() const
+{
+	return pos;
+}
+
+bool	Guard::in_map() const
+{
+	return !escaped;
 }

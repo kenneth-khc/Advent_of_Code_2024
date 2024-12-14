@@ -25,9 +25,9 @@ void    Map::mark(size_t x, size_t y)
     layout[y][x] = 'X';
 }
 
-std::string&	Map::operator[](size_t idx)
+char&	Map::operator()(size_t x, size_t y)
 {
-    return layout[idx];
+	return layout[y][x];
 }
 
 size_t	Map::get_width()

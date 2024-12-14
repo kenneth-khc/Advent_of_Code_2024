@@ -2,6 +2,7 @@
 #include <vector>
 #include <fstream>
 #include <string>
+#include "Point.hpp"
 #include "Guard.hpp"
 #include "Map.hpp"
 #include <utility>
@@ -13,10 +14,9 @@ parse_map(std::string filename)
 	Guard			guard;
 	Map				map;
 
-	for (int x = 0, y = 0; !file.eof(); y++)
+	std::string	line;
+	for (int x = 0, y = 0; file >> line; ++y)
 	{
-		std::string	line;
-		std::getline(file, line);
 		map.add(line);
 		x = static_cast<int>(line.find('^'));
 		if (static_cast<size_t>(x) != line.npos)
@@ -29,13 +29,15 @@ parse_map(std::string filename)
 
 int main()
 {
-	std::pair	input = parse_map("input.txt");
+	std::pair	input = parse_map("example.txt");
 	Map			map = input.first;
 	Guard		guard = input.second;
+	std::vector<Point>	path;
 	map.print();
-	while (1)
+	while (guard.in_map())
 	{
 		guard.move(map);
 		// map.print();
+		path.push_back(guard.get_pos());
 	}
 }

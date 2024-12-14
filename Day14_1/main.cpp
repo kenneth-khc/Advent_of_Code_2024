@@ -2,8 +2,6 @@
 #include <iostream>
 #include <vector>
 #include <regex>
-#include <chrono>
-#include <thread>
 #include "Point.hpp"
 #include "Robot.hpp"
 #include "Map.hpp"
