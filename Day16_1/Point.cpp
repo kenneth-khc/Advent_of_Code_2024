@@ -14,6 +14,13 @@ bool    Point::operator==(const Point& other) const
     return this->x == other.x && this->y == other.y;
 }
 
+Point   Point::operator-(const Point& other) const
+{
+    int new_x = this->x - other.x;
+    int new_y = this->y - other.y;
+    return Point(new_x, new_y);
+}
+
 size_t  Point::Hasher::operator()(const Point& p) const
 {
     size_t  x_hash = std::hash<int>()(p.x);

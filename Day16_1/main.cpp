@@ -6,19 +6,43 @@
 #include <algorithm>
 #include <unordered_map>
 #include "Point.hpp"
-#include "Node.hpp"
 
-std::vector<std::vector<char>>
-parse_map(const std::string& filename);
+using Map = std::vector<std::vector<char>>;
 
-enum class Direction {
-	EAST = 0,
-	NORTH,
-	WEST,
-	SOUTH
-};
+Map
+parse_map(const std::string&);
 
-Point	find_point(std::vector<std::vector<char>>& map, const char& c)
+Point
+find_point(Map&, const char&);
+
+void
+dijkstra(Map&, Point&, Point&);
+
+int main()
+{
+	Map			map = parse_map("input.txt");
+	Point		exit_pos = find_point(map, 'E');
+	Point		reindeer_pos = find_point(map, 'S');
+
+	dijkstra(map, reindeer_pos, exit_pos);
+	return 0;
+}
+
+Map
+parse_map(const std::string& filename)
+{
+    std::ifstream	file {filename};
+	std::string		line;
+    Map				map;
+
+	while (file >> line)
+	{
+		map.push_back(std::vector(line.begin(), line.end()));
+	}
+	return map;
+}
+
+Point	find_point(Map& map, const char& c)
 {
 	for (size_t y = 0; y < map.size(); ++y)
 	{
@@ -36,7 +60,71 @@ Point	find_point(std::vector<std::vector<char>>& map, const char& c)
 using Set = std::unordered_map<Point,uint64_t,Point::Hasher>;
 
 Set
-construct_set(std::vector<std::vector<char>>& map)
+construct_set(Map&);
+
+bool
+should_check(Set&);
+
+enum class Direction {
+	EAST = 0,
+	NORTH,
+	WEST,
+	SOUTH
+};
+
+Direction
+get_direction(const Point&, const Point&);
+
+Point
+get_xy_change(Direction& dir);
+
+std::vector<Point>
+get_neighbours(const Point&, const Set&);
+
+using Paths = std::unordered_map<Point,Point,Point::Hasher>;
+
+void
+update(const std::vector<Point>&, Paths&, const Point&,
+	   const Point&, const uint64_t&, Set&);
+
+void	dijkstra(Map& map, Point& start_pos, Point& end_pos)
+{
+	Direction	reindeer_dir = Direction::EAST;
+	Set			unvisited = construct_set(map);
+	Paths		paths {};
+
+	unvisited[start_pos] = 0;
+	while (should_check(unvisited))
+	{
+		auto	it = std::min_element(unvisited.begin(), unvisited.end(),
+		[](const std::pair<Point,uint64_t>& l, const std::pair<Point,uint64_t>& r){
+			return l.second < r.second;
+		});	
+		const Point&	curr_pos = it->first;
+		const uint64_t&	curr_cost = it->second;
+		if (curr_pos == end_pos)
+		{
+			std::cout << "Cost to exit: " << curr_cost << std::endl;
+			break ;
+		}
+
+		if (paths.contains(curr_pos))
+		{
+			Point&	prev = paths[curr_pos];
+			reindeer_dir = get_direction(curr_pos, prev);
+		}
+		const Point		change = get_xy_change(reindeer_dir);
+
+		std::vector<Point>	neighbours =
+		get_neighbours(curr_pos, unvisited);
+		update(neighbours, paths, change, curr_pos, curr_cost, unvisited);
+		unvisited.erase(it);
+	}
+
+}
+
+Set
+construct_set(Map& map)
 {
 	Set	set;
 
@@ -77,68 +165,56 @@ Point	get_xy_change(Direction& dir)
 	else return {0, +1};
 }
 
-int main()
+Direction	get_direction(const Point& curr, const Point& prev)
 {
-	std::vector<std::vector<char>>	map = parse_map("example.txt");
-	Point		exit_pos = find_point(map, 'E');
-	Point		reindeer_pos = find_point(map, 'S');
-	Direction	reindeer_dir = Direction::EAST;
-	Set			unvisited = construct_set(map);
-	unvisited[reindeer_pos] = 0;
+	Point	diff = curr - prev;
 
-	while (should_check(unvisited))
-	{
-		auto	it = std::min_element(unvisited.begin(), unvisited.end(),
-		[](const std::pair<Point,uint64_t>& l, const std::pair<Point,uint64_t>& r){
-			return l.second < r.second;
-		});
-
-		const Point&	curr_pos = it->first;
-		const uint64_t&	curr_cost = it->second;
-		const Point		change = get_xy_change(reindeer_dir);
-		const Point		forward_tile = {curr_pos.x + change.x, curr_pos.y + change.y};
-		// update neighbours
-		std::vector<std::pair<Point,Direction>>	neighbours =
-		{
-			{{curr_pos.x + 1, curr_pos.y}, Direction::EAST},
-			{{curr_pos.x, curr_pos.y - 1}, Direction::NORTH},
-			{{curr_pos.x - 1, curr_pos.y}, Direction::WEST},
-			{{curr_pos.x, curr_pos.y + 1}, Direction::SOUTH}
-		};
-		for (const auto& neighbour : neighbours)
-		{
-			if (unvisited.contains(neighbour.first) == false) continue;
-			uint64_t	new_cost = curr_cost;
-			if (neighbour.second != reindeer_dir)
-			{
-				new_cost += 1000;
-				reindeer_dir = neighbour.second;
-			}
-			new_cost += 1;
-			if (new_cost < unvisited[neighbour.first])
-			{
-				unvisited[neighbour.first] = new_cost;
-			}
-		}
-		if (curr_pos == exit_pos)
-		{
-			std::cout << "Cost to exit: " << curr_cost << std::endl;
-		}
-		unvisited.erase(it);
-	}
-	return 0;
+	if (diff == Point {1, 0}) return Direction::EAST;
+	else if (diff == Point {-1, 0}) return Direction::WEST;
+	else if (diff == Point {0, -1}) return Direction::NORTH;
+	else return Direction::SOUTH;
 }
 
-std::vector<std::vector<char>>
-parse_map(const std::string& filename)
+std::vector<Point>
+get_neighbours(const Point& point, const Set& valid_points)
 {
-    std::ifstream	file {filename};
-    std::vector<std::vector<char>>	map;
-	std::string	line;
-
-	while (file >> line)
+	std::vector<Point>	neighbours =
 	{
-		map.push_back(std::vector(line.begin(), line.end()));
+		{point.x, point.y - 1},
+		{point.x, point.y + 1},
+		{point.x - 1, point.y},
+		{point.x + 1, point.y}
+	};
+
+	for (auto it = neighbours.begin(); it != neighbours.end();)
+	{
+		Point&	neighbour = *it;
+		if (valid_points.contains(neighbour) == false)
+		{
+			it = neighbours.erase(it);
+		}
+		else
+		{
+			++it;
+		}
 	}
-	return map;
+	return neighbours;
+}
+
+void	update(const std::vector<Point>& neighbours, Paths& paths, const Point& change,
+			   const Point& curr_pos, const uint64_t& curr_cost, Set& unvisited)
+{
+	for (const auto& neighbour : neighbours)
+	{
+		uint64_t	new_cost = curr_cost + 1;
+		if (neighbour - curr_pos != change)
+		{
+			new_cost += 1000;
+		}
+		if (new_cost < unvisited[neighbour])
+		{
+			unvisited[neighbour] = new_cost;
+			paths[neighbour] = curr_pos;
+		}
+	}
 }

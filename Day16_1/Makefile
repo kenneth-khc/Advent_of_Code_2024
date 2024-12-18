@@ -1,6 +1,6 @@
 NAME := day16_1
 
-CXX := c++
+CXX := g++
 CXXFLAGS := -Wall -Werror -Wextra -g3 -std=c++2a
 
 SRCS := $(wildcard *.cpp)
@@ -18,3 +18,7 @@ clean:
 .PHONY: fclean
 fclean: clean
 	$(RM) $(NAME)
+
+.PHONY:
+fsan: CXXFLAGS += -fsanitize=address,undefined
+fsan: all

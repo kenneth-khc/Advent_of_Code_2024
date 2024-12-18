@@ -12,7 +12,9 @@ public:
     Point(Point&&) = default;
     ~Point() = default;
 
+    Point&  operator=(const Point&) = default;
     bool	operator==(const Point&) const;
+    Point   operator-(const Point&) const;
     struct Hasher
     {
         size_t  operator()(const Point&) const;
