@@ -31,6 +31,20 @@ print_map(std::vector<std::vector<char>>& map);
 uint64_t
 calculate_gps(std::vector<std::vector<char>>& map);
 
+void	print(std::deque<char> movements)
+{
+	// static int	moves = movements.size();
+	static int	counter = 0;
+	// static int	steps = moves / 10;
+
+	std::cout << movements[0] << " | ";
+	for (int i = 1; i < 10; ++i)
+	{
+		std::cout << movements[i] << "  ";
+	}
+	std::cout << '\t' << "Movement " << ++counter << '\n';
+}
+
 int	main()
 {
 	std::ifstream					file {"input.txt"};
@@ -48,23 +62,24 @@ int	main()
 		if (move == '^')
 		{
 			d.x = 0; d.y = -1;
-			std::cout << "Moving up\n";
+			std::cout << "Moving up\t";
 		}
 		else if (move == '<')
 		{
 			d.x = -1; d.y = 0;
-			// std::cout << "Moving left\n";
+			std::cout << "Moving left\t";
 		}
 		else if (move == 'v')
 		{
 			d.x = 0; d.y = +1;
-			std::cout << "Moving down\n";
+			std::cout << "Moving down\t";
 		}
 		else
 		{
 			d.x = +1; d.y = 0;
-			std::cout << "Moving right\n";
+			std::cout << "Moving right\t";
 		}
+		print(movement);
 		move_robot(robot_pos, map, d);
 		movement.pop_front();
 		print_map(map);
