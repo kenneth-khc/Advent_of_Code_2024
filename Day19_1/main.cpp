@@ -30,6 +30,29 @@ parse(const std::string& filename, Towels& available)
 	return requirements;
 }
 
+bool	match(const char* word, const std::string& letters)
+{
+	size_t	i = 0;
+	while (letters[i] == word[i])
+	{
+		i++;
+	}
+	return i >= letters.length();
+}
+
+bool	match_towels(std::string requirement, Towels& available)
+{
+	size_t	i = 0;
+	for (auto& towel : available)
+	{
+		if (match(&requirement[i], towel))
+		{
+			i += towel.length();
+		}
+	}
+	return i >= requirement.length();
+}
+
 int	main()
 {
 	Towels	available_towels {};
@@ -38,20 +61,8 @@ int	main()
 	int		possible_designs {0};
 	for (auto& requirement : requirements)
 	{
-		for (const auto& towel : available_towels)
-		{
-			std::regex	pattern {towel};
-			std::smatch	match;
-
-			if (std::regex_search(requirement, match, pattern))
-			{
-				requirement.erase(match.position(), towel.length());
-			}
-		}
-		if (requirement.empty())
-		{
+		if (match_towels(requirement, available_towels))
 			++possible_designs;
-		}
 	}
 	std::cout << "There are " << possible_designs << " possible designs" << std::endl;
 }
