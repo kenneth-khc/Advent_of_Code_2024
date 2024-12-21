@@ -1,18 +1,17 @@
 #include <fstream>
 #include <iostream>
-#include <set>
+#include <unordered_set>
 #include <map>
 #include <unordered_map>
 #include <vector>
-#include <deque>
 #include <limits>
 #include <iterator>
 #include <algorithm>
 #include <functional>
+#include <chrono>
 #include "Point.hpp"
 
 using Map = std::vector<std::vector<char>>;
-
 Map	parse(const std::string& filename)
 {
 	std::ifstream	file {filename};
@@ -26,29 +25,20 @@ Map	parse(const std::string& filename)
 	return map;
 }
 
-void	print(Map& map)
-{
-	for (size_t y = 0; y < map.size(); ++y)
-	{
-		for (size_t x = 0; x < map[y].size(); ++x)
-		{
-			std::cout << map[y][x];
-		}
-		std::cout << '\n';
-	}
-	std::cout << '\n';
-}
+using Point_HashSet = std::unordered_set<Point,Point::Hasher>;
 
+/*	Get the path from the start to the end, with the indexes indicating how many
+	steps it takes to get to that tile */
 std::vector<Point>	get_path(const Map& map, const Point& start, const Point& end)
 {
-	std::vector<Point>	path {};
-	std::set<Point>		visited {};
+	std::vector<Point>	path {}; path.reserve(20000);
+	Point_HashSet		visited {};
 	Point				next {start};
 	std::function<bool(const Point&)>	is_new_walkable = 
 	[&](const Point& p)
 	{
 		return map[p.y][p.x] != '#'
-		&& std::find(visited.begin(), visited.end(), p) == visited.end();
+		&& visited.find(p) == visited.end();
 	};
 
 	visited.insert(next);
@@ -70,9 +60,10 @@ std::vector<Point>	get_path(const Map& map, const Point& start, const Point& end
 	return path;
 }
 
-std::set<Point>	get_walkables(Map& map)
+/* Get all the possible walkable tiles on the map */
+Point_HashSet	get_walkables(Map& map)
 {
-	std::set<Point>	walkables {};
+	Point_HashSet	walkables {};
 
 	for (size_t row = 0; row < map.size(); ++row)
 	{
@@ -80,111 +71,50 @@ std::set<Point>	get_walkables(Map& map)
 		{
 			if (map[row][column] != '#')
 			{
-				walkables.insert(Point(column, row));
+				walkables.emplace(Point(column, row));
 			}
 		}
 	}
 	return walkables;
 }
 
-using Cheats = std::map<int, int>;
-
-std::map<Point,int>	get_distances_from_start(std::set<Point>& walkables, Point& start)
+/*	A map of distances between a pair of points 
+	We are only concerned about distances that are within 20 because
+	those are the only possible cheats */
+using Distance_Map = std::map<std::pair<Point,Point>,int>;
+Distance_Map	get_distances_between_points(Point_HashSet& walkables)
 {
-	std::map<Point,int>	distances {};
+	Distance_Map	distances {};
 
-	for (auto it = walkables.begin(); it != walkables.end(); ++it)
+	Point_HashSet::iterator	end = walkables.end();
+	for (auto it = walkables.begin(); it != end; ++it)
 	{
-		const Point&	tile = *it;
-		const int		distance = Point::manhattan_dist(start, tile);
-		distances.emplace(tile, distance);
-	}
-	return distances;
-}
-
-std::map<Point,int>	get_distances_to_end(std::set<Point>& walkables, Point& end)
-{
-	std::map<Point,int>	distances {};
-
-	for (auto it = walkables.begin(); it != walkables.end(); ++it)
-	{
-		const Point&	tile = *it;
-		const int		distance = Point::manhattan_dist(tile, end);
-		distances.emplace(tile, distance);
-	}
-	return distances;
-}
-
-// A map of distances between a pair of points
-using DistanceMap = std::map<std::pair<Point,Point>,int>;
-DistanceMap	get_distances_between_points(std::set<Point>& walkables)
-{
-	DistanceMap	distances {};
-
-	for (auto it = walkables.begin(); it != walkables.end(); ++it)
-	{
-		const Point&	p1 = *it;
-		for (auto it2 = walkables.begin(); it2 != walkables.end(); ++it2)
+		for (auto it2 = walkables.begin(); it2 != end; ++it2)
 		{
-			// if (it2 == it) continue;
+			const Point&	p1 = *it;
 			const Point&	p2 = *it2;
-			const int		distance = Point::manhattan_dist(p1, p2);
-			distances.emplace(std::make_pair(p1, p2), distance);
-			// distances.insert({std::make_pair(p1, p2), distance});
+			if (p1 == p2) continue;
+
+			const int	distance = Point::manhattan_dist(p1, p2);
+			if (distance < 21)
+			{
+				distances.emplace(std::make_pair(p1, p2), distance);
+			}
 		}
 	}
 	return distances;
 }
 
-using StepTable = std::map<std::pair<Point,Point>,int>;
-StepTable	get_steps_between_points(std::vector<Point>& path)
+using PathIndex_HashMap = std::unordered_map<Point,int,Point::Hasher>;
+int	count_non_cheat_path(PathIndex_HashMap& index_table, const Point& cheat_start, const Point& cheat_end)
 {
-	StepTable	step_table {};
-
-	for (auto it = path.begin(); it != path.end(); ++it)
-	{
-		for (auto itt = it; itt != path.end(); ++itt)
-		{
-			if (itt == it) continue ;
-			const Point&	src = *it;
-			const Point&	dest = *itt;
-			const int		steps = std::distance(it, itt);
-			step_table.emplace(std::make_pair(src, dest), steps);
-		}
-	}
-	return step_table;
-}
-
-
-int	cheat(Map& map, const StepTable& steptable, const std::vector<Point>& path, std::unordered_map<Point,int,Point::Hasher>& index_table, Point& start, Point& end, const Point& cheat_start, const Point& cheat_end)
-{(void)start;(void)end;(void)map;
-	std::set<Point>		visited {};
-	static const auto	path_begin = path.begin();
-	static const auto	path_end = path.end();
-
 	size_t	steps {0};
-	// auto	itt = path_begin + index_table[cheat_start];
-	const std::pair<Point,Point>	start_to_cheat_start {start, cheat_start};
-	int	first_steps = steptable[start_to_cheat_start];
-	const std::pair<Point,Point>	cheat_end_to_end {cheat_end, end};
-	auto	cheat_start_it = path_begin + index_table[cheat_start];
-	for (auto it = path_begin; it != cheat_start_it; ++it)
-	{
-		++steps;
-	}
-	// visited.insert(path_begin, itt);
-	// auto	it = path_begin + index_table[cheat_end];
-	auto	cheat_end_it = path_begin + index_table[cheat_end];
-	for (auto it = cheat_end_it; it != path_end; ++it)
-	{
-		++steps;
-	}
-	return steps - 1;
-	// return (visited.size() - 1);
+	steps += index_table[cheat_start];
+	steps += index_table.size() - index_table[cheat_end];
+	return steps - 1; // -1 because it counts the starting position but that isn't a step
 }
 
-
-bool	cheatable(std::unordered_map<Point,int,Point::Hasher>& index_table,
+bool	in_order(PathIndex_HashMap& index_table,
 				  const Point& p1, const Point& p2)
 {
 	std::ptrdiff_t	p1_idx = index_table[p1];
@@ -192,9 +122,11 @@ bool	cheatable(std::unordered_map<Point,int,Point::Hasher>& index_table,
 	return p1_idx < p2_idx;
 }
 
-std::unordered_map<Point,int,Point::Hasher>	init_index_table(std::vector<Point>& path)
+/*	A HashMap with a Point as a key and the amount of steps it takes
+	to reach it as the value */
+PathIndex_HashMap	init_index_table(std::vector<Point>& path)
 {
-	std::unordered_map<Point,int,Point::Hasher>	table {};
+	PathIndex_HashMap	table {};
 
 	int	i {0};
 	for (auto it = path.begin(); it != path.end(); ++it)
@@ -207,48 +139,57 @@ std::unordered_map<Point,int,Point::Hasher>	init_index_table(std::vector<Point>&
 
 int	main()
 {
-	Map				map = parse("input.txt");
-	Point			start = Point::find_in(map, 'S');
-	Point			end = Point::find_in(map, 'E');
+	auto	clock_start = std::chrono::steady_clock::now();
+	Map		map = parse("input.txt");
+	Point	start = Point::find_in(map, 'S');
+	Point	end = Point::find_in(map, 'E');
 
-	std::set<Point>	walkables = get_walkables(map);
-	const int		initial_steps = walkables.size() - 1;
+	Point_HashSet	walkables = get_walkables(map);
+	std::cout << "Done getting all walkable tiles on the map...\n";
+
 	std::vector<Point>	path = get_path(map, start, end);
-	std::unordered_map<Point,int,Point::Hasher>	index_table = init_index_table(path);
-	DistanceMap	distances = get_distances_between_points(walkables);
-	std::map<int,int>	occurrences {};
+	std::cout << "Done getting a straight path to the exit...\n";
 
+	PathIndex_HashMap	index_table = init_index_table(path);
+	Distance_Map		distances = get_distances_between_points(walkables);
+	std::cout << "Done getting the distances between each pair of walkable points...\n";
+
+	std::cout << "Calculating the savings of cheating...\n";
+	std::map<int,int>	occurrences {};
+	const int	initial_steps = walkables.size() - 1;
 	for (auto it = distances.begin(); it != distances.end(); ++it)
 	{
 		const std::pair<Point,Point> pair = it->first;
-		const int&		dist = it->second;
+		const int&		cheat_dist = it->second;
 		const Point&	p1 = pair.first;
 		const Point&	p2 = pair.second;
-		if (dist < 21 && cheatable(index_table, p1, p2))
+		if (in_order(index_table, p1, p2)) // we don't cheat backwards towards the start
 		{
-			// std::cout << "Can cheat from " << p1 << " to " << p2 << '\n';
-			int steps = cheat(map, path, index_table, start, end, p1, p2) + dist;
-			int steps_saved = initial_steps - steps;
+			const int	ethical_steps = count_non_cheat_path(index_table, p1, p2);
+			const int	total_steps = ethical_steps + cheat_dist;
+			const int	steps_saved = initial_steps - total_steps;
 			++occurrences[steps_saved];
-			// std::cout << "Steps saved: " << steps_saved << '\n';
-			// std::cout << "------------------------------\n";
 		}
 	}
 	int	over_100ps_saved_count {0};
+	int	total_cheats {0};
 	for (auto it = occurrences.begin(); it != occurrences.end(); ++it)
 	{
 		const int&	time_saved = it->first;
 		const int&	count = it->second;
-		std::cout << count << " cheats that save " << time_saved << '\n';
-		if (time_saved >= 100)
-			++over_100ps_saved_count;
-	}
-	std::cout << over_100ps_saved_count << " cheats that saved over 100 picoseconds\n";
-	// for (auto it = walkables.begin(); it != walkables.end(); ++it)
-	// {
-	// 	auto tile = *it;
-	// 	std::cout << "At " << tile << " to " << end << ": " << Point::manhattan_dist(tile, end) << '\n';
-	// }
 
-	// print(map);
+		std::cout << count << " cheats that save " << time_saved << " picoseconds\n";
+		total_cheats += count;
+		if (time_saved >= 100)
+		{
+			over_100ps_saved_count += count;
+		}
+	}
+	std::cout << "Total cheats discovered: " << total_cheats << '\n';
+	std::cout << over_100ps_saved_count << " cheats that saved over 100 picoseconds\n";
+	auto	clock_end = std::chrono::steady_clock::now();
+	auto	clock_diff = clock_end - clock_start;
+	std::cout << "Time: " << std::chrono::duration<double, std::milli>(clock_diff).count()
+			  << "ms" << std::endl;
+	return 0;
 }

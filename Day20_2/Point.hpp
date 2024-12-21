@@ -27,7 +27,8 @@ public:
 
 	struct Hasher
 	{
-		size_t	operator()(const Point& p) const;
+		size_t	operator()(const Point&) const;
+		size_t	operator()(const std::pair<Point,Point>&) const;
 	};
 
 	static Point	find_in(std::vector<std::vector<char>>, const char&);

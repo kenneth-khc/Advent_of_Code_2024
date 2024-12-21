@@ -78,6 +78,13 @@ size_t	Point::Hasher::operator()(const Point& p) const
 	return x_hash ^ y_hash;
 }
 
+size_t	Point::Hasher::operator()(const std::pair<Point,Point>& pair) const
+{
+	size_t	first_hash = Hasher::operator()(pair.first);
+	size_t	second_hash = Hasher::operator()(pair.second);
+	return first_hash ^ second_hash;
+}
+
 Point	Point::find_in(std::vector<std::vector<char>> grid, const char& c)
 {
 	for (size_t row = 0; row < grid.size(); ++row)
