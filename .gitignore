@@ -1,8 +1,10 @@
-a.out
+*.out
 main
 launch.json
 *.json
 input.txt
 example.txt
 *.o
+*.txt
+*.log
 [a-z]ay*
