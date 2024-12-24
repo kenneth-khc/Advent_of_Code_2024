@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <deque>
+#include <numeric>
 #include "Point.hpp"
 #include "Plot.hpp"
 
@@ -29,6 +30,18 @@ void	print(std::vector<Point>& region)
 	for (auto& plant : region)
 	{
 		std::cout << plant << '\n';
+	}
+}
+
+void	print(Map& map)
+{
+	for (size_t row = 0; row < map.size(); ++row)
+	{
+		for (size_t column = 0; column < map[row].size(); ++column)
+		{
+			std::cout << map[row][column];
+		}
+		std::cout << '\n';
 	}
 }
 
@@ -86,6 +99,10 @@ std::vector<Plot>	get_other_region_neighbours(Map& map, Plot& p)
 		{
 			neighbours.push_back(Plot(x, y, map[y][x]));
 		}
+		else if (!in_map(map, Plot(x, y)))
+		{
+			neighbours.push_back(Plot(x, y, 0));
+		}
 	}
 	return neighbours;
 }
@@ -142,12 +159,12 @@ std::vector<Plot>	find_region(Map& map, Plot p)
 				searching.push_back(neighbour);
 			}
 		}
-		if (map[visiting.y][visiting.x] == p.symbol)
-		{
-			region.push_back(visiting);
-			visited.insert(visiting);
+		// if (map[visiting.y][visiting.x] == p.symbol)
+		// {
+		region.push_back(visiting);
+		visited.insert(visiting);
 			// map[visiting.y][visiting.x] = 0;
-		}
+		// }
 	}
 	return region;
 }
@@ -178,36 +195,163 @@ std::vector<Plot>	find_edges(Map& map, std::vector<Plot>& region)
 	return edges;
 }
 
+uint64_t	find_north_side(int x_start, int x_end, char region_type, std::vector<Plot> edges)
+{
+	std::vector<Plot>	edges_to_check {};
+	while (x_start < x_end+1)
+	{
+		int	lowest_y = std::numeric_limits<int>::max();
+		std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+		{
+			if (p.x == x_start 
+			 && p.y < lowest_y
+			 && p.symbol == region_type)
+				lowest_y = p.y;
+		});
+		edges_to_check.push_back(Plot(x_start, lowest_y, region_type));
+		++x_start;
+	}
+	auto prev = edges_to_check.begin();
+	auto curr = prev + 1;
+	uint64_t	sides {1};
+	while (curr != edges_to_check.end())
+	{
+		if (curr->y - prev->y != 0)
+			++sides;
+		++curr;
+		++prev;
+	}
+	return sides;
+}
+
+uint64_t	find_south_side(int x_start, int x_end, char region_type, std::vector<Plot> edges)
+{
+	std::vector<Plot>	edges_to_check {};
+	while (x_start < x_end+1)
+	{
+		int	highest_y = std::numeric_limits<int>::min();
+		std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+		{
+			if (p.x == x_start 
+			 && p.y > highest_y
+			 && p.symbol == region_type)
+				highest_y = p.y;
+		});
+		edges_to_check.push_back(Plot(x_start, highest_y, region_type));
+		++x_start;
+	}
+	auto prev = edges_to_check.begin();
+	auto curr = prev + 1;
+	uint64_t	sides {1};
+	while (curr != edges_to_check.end())
+	{
+		if (curr->y - prev->y != 0)
+			++sides;
+		++curr;
+		++prev;
+	}
+	return sides;
+}
+
+uint64_t	find_west_side(int y_start, int y_end, char region_type, std::vector<Plot> edges)
+{
+	std::vector<Plot>	edges_to_check {};
+	while (y_start < y_end+1)
+	{
+		int	lowest_x = std::numeric_limits<int>::max();
+		std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+		{
+			if (p.y == y_start 
+			 && p.x < lowest_x
+			 && p.symbol == region_type)
+				lowest_x = p.x;
+		});
+		edges_to_check.push_back(Plot(lowest_x, y_start, region_type));
+		++y_start;
+	}
+	auto prev = edges_to_check.begin();
+	auto curr = prev + 1;
+	uint64_t	sides {1};
+	while (curr != edges_to_check.end())
+	{
+		if (curr->x - prev->x != 0)
+			++sides;
+		++curr;
+		++prev;
+	}
+	return sides;
+}
+
+uint64_t	find_east_side(int y_start, int y_end, char region_type, std::vector<Plot> edges)
+{
+	std::vector<Plot>	edges_to_check {};
+	while (y_start < y_end+1)
+	{
+		int	highest_x = std::numeric_limits<int>::min();
+		std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+		{
+			if (p.y == y_start 
+			 && p.x > highest_x
+			 && p.symbol == region_type)
+				highest_x = p.x;
+		});
+		edges_to_check.push_back(Plot(highest_x, y_start, region_type));
+		++y_start;
+	}
+	auto prev = edges_to_check.begin();
+	auto curr = prev + 1;
+	uint64_t	sides {1};
+	while (curr != edges_to_check.end())
+	{
+		if (curr->x - prev->x != 0)
+			++sides;
+		++curr;
+		++prev;
+	}
+	return sides;
+}
+
 uint64_t	calculate_region_price(Map& map, Point p)
 {
-	std::vector<Plot>	region = find_region(map, Plot(p, map[p.y][p.x]));
+	char				plant_type = map[p.y][p.x];
+	std::vector<Plot>	region = find_region(map, Plot(p, plant_type));
 	std::vector<Plot>	edges = find_edges(map, region);
-	uint64_t	total_area = region.size();
-	uint64_t	total_sides {0};
+	uint64_t			total_area = region.size();
+	uint64_t			total_sides {0};
 
-	std::array<bool,4>	mask = {false, false, false, false};
-	Plot*	start = &edges[0];
-	if (start->fenced != mask)
+	int	x_start = std::numeric_limits<int>::max();
+	std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
 	{
-		mask = start->fenced;
-		// total_sides += get_side_diff(start->fenced, curr->fenced);
-		++total_sides;
-	}
-	Plot*	curr = &edges[1];
-	for (int i = 1; curr != start; ++i %= edges.size())
+		if (p.x < x_start)
+			x_start = p.x;
+	});
+	int	x_end = std::numeric_limits<int>::min();
+	std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
 	{
-		curr = &edges[i]; if(curr == start) break;
-		if (curr->fenced == mask) continue;
-		else if (curr->fenced == std::array<bool,4> {false, false, false, false}) continue;
-		else
-		{
-			// total_sides += get_side_diff(mask, curr->fenced);
-			++total_sides;
-			mask = curr->fenced;
-		}
-	}
+		if (p.x > x_end)
+			x_end = p.x;
+	});
 
-	std::cout << "Found " << total_sides << " total sides for region " << region[0].symbol << '\n';
+	total_sides += find_north_side(x_start, x_end, plant_type, edges);
+	total_sides += find_south_side(x_start, x_end, plant_type, edges);
+
+	int	y_start = std::numeric_limits<int>::max();
+	std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+	{
+		if (p.y < y_start)
+			y_start = p.y;
+	});
+	int	y_end = std::numeric_limits<int>::min();
+	std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+	{
+		if (p.y > y_end)
+			y_end = p.y;
+	});
+
+	total_sides += find_west_side(y_start, y_end, plant_type, edges);
+	total_sides += find_east_side(y_start, y_end, plant_type, edges);
+
+	std::cout << "Found " << total_sides << " total sides for region " << plant_type << '\n';
 
 	clear_region_on_map(map, region);
 	return total_area * total_sides;
@@ -215,7 +359,7 @@ uint64_t	calculate_region_price(Map& map, Point p)
 
 int	main()
 {
-	Map	map = parse("example.txt");
+	Map	map = parse("example2.txt");
 
 	uint64_t	total_price {0};
 	for (size_t row = 0; row < map.size(); ++row)
