@@ -6,6 +6,7 @@
 #include <utility>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 #include "Point.hpp"
 #include "Box.hpp"
 
@@ -18,7 +19,8 @@ parse_movement(std::ifstream& file);
 bool
 move_box(Box& box,
 		 std::vector<std::vector<char>>& map,
-		 Point& diff);
+		 Point& diff,
+		 std::deque<Box>&);
 
 void
 move_robot(Point& robot_pos,
@@ -79,11 +81,13 @@ int	main()
 			d.x = +1; d.y = 0;
 			std::cout << "Moving right\t";
 		}
-		print(movement);
+		// print(movement);
+		// std::cin.get();
 		move_robot(robot_pos, map, d);
 		movement.pop_front();
-		print_map(map);
-		std::this_thread::sleep_for(std::chrono::milliseconds(250));
+		// print_map(map);
+		// std::cout <<'\n';
+		// std::this_thread::sleep_for(std::chrono::milliseconds(250));
 	}
 	std::cout << "Done map\n";
 	print_map(map);
@@ -156,7 +160,8 @@ std::deque<char>	parse_movement(std::ifstream& file)
 
 bool	move_box(Box& box,
 				 std::vector<std::vector<char>>& map,
-				 Point& diff)
+				 Point& diff,
+				 std::deque<Box>& boxes_to_move)
 {
 	if (diff.x != 0)
 	{
@@ -179,10 +184,15 @@ bool	move_box(Box& box,
 		}
 		else if (c == '.')
 		{
-			map[box.left.y][box.left.x] = '.';
-			map[box.right.y][box.right.x] = '.';
-			map[moved_box.left.y][moved_box.left.x] = '[';
-			map[moved_box.right.y][moved_box.right.x] = ']';
+			if (std::find(boxes_to_move.begin(), boxes_to_move.end(),
+				box) == boxes_to_move.end())
+			{
+				boxes_to_move.push_back(box);
+			}
+			// map[box.left.y][box.left.x] = '.';
+			// map[box.right.y][box.right.x] = '.';
+			// map[moved_box.left.y][moved_box.left.x] = '[';
+			// map[moved_box.right.y][moved_box.right.x] = ']';
 			return true;
 		}
 		else
@@ -192,12 +202,17 @@ bool	move_box(Box& box,
 				next_box = {new_pos.x - 1, new_pos.y};
 			else
 				next_box = {new_pos.x, new_pos.y};
-			if (move_box(next_box, map, diff))
+			if (move_box(next_box, map, diff, boxes_to_move))
 			{
-				map[box.left.y][box.left.x] = '.';
-				map[box.right.y][box.right.x] = '.';
-				map[moved_box.left.y][moved_box.left.x] = '[';
-				map[moved_box.right.y][moved_box.right.x] = ']';
+				if (std::find(boxes_to_move.begin(), boxes_to_move.end(),
+					box) == boxes_to_move.end())
+				{
+					boxes_to_move.push_back(box);
+				}
+				// map[box.left.y][box.left.x] = '.';
+				// map[box.right.y][box.right.x] = '.';
+				// map[moved_box.left.y][moved_box.left.x] = '[';
+				// map[moved_box.right.y][moved_box.right.x] = ']';
 				return true;
 			}
 			return false;
@@ -228,10 +243,15 @@ bool	move_box(Box& box,
 		}
 		else if (c1 == '.' && c2 == '.')
 		{
-			map[box.left.y][box.left.x] = '.';
-			map[box.right.y][box.right.x] = '.';
-			map[moved_box.left.y][moved_box.left.x] = '[';
-			map[moved_box.right.y][moved_box.right.x] = ']';
+			if (std::find(boxes_to_move.begin(), boxes_to_move.end(),
+				box) == boxes_to_move.end())
+			{
+				boxes_to_move.push_back(box);
+			}
+			// map[box.left.y][box.left.x] = '.';
+			// map[box.right.y][box.right.x] = '.';
+			// map[moved_box.left.y][moved_box.left.x] = '[';
+			// map[moved_box.right.y][moved_box.right.x] = ']';
 			return true;
 		}
 		else
@@ -241,14 +261,20 @@ bool	move_box(Box& box,
 			{
 				next_box = Box {new_p1.x - 1, new_p1.y};
 				Box	next_box_2 {new_p2.x, new_p2.y};
-				if (move_box(next_box, map, diff)
-				 && move_box(next_box_2, map, diff))
+				// TODO: why?
+				if (move_box(next_box, map, diff, boxes_to_move)
+				 && move_box(next_box_2, map, diff, boxes_to_move))
 				{
 					// Box	moved_box {new_p1.x, new_p1.y};
-					map[box.left.y][box.left.x] = '.';
-					map[box.right.y][box.right.x] = '.';
-					map[moved_box.left.y][moved_box.left.x] = '[';
-					map[moved_box.right.y][moved_box.right.x] = ']';
+					if (std::find(boxes_to_move.begin(), boxes_to_move.end(),
+						box) == boxes_to_move.end())
+					{
+						boxes_to_move.push_back(box);
+					}
+					// map[box.left.y][box.left.x] = '.';
+					// map[box.right.y][box.right.x] = '.';
+					// map[moved_box.left.y][moved_box.left.x] = '[';
+					// map[moved_box.right.y][moved_box.right.x] = ']';
 					return true;
 				}
 				return false;
@@ -267,13 +293,18 @@ bool	move_box(Box& box,
 				{
 					next_box = Box {new_p1.x, new_p1.y};
 				}
-				if (move_box(next_box, map, diff))
+				if (move_box(next_box, map, diff, boxes_to_move))
 				{
 					// Box	moved_box {new_p1.x, new_p1.y};
-					map[box.left.y][box.left.x] = '.';
-					map[box.right.y][box.right.x] = '.';
-					map[moved_box.left.y][moved_box.left.x] = '[';
-					map[moved_box.right.y][moved_box.right.x] = ']';
+				if (std::find(boxes_to_move.begin(), boxes_to_move.end(),
+					box) == boxes_to_move.end())
+				{
+					boxes_to_move.push_back(box);
+				}
+					// map[box.left.y][box.left.x] = '.';
+					// map[box.right.y][box.right.x] = '.';
+					// map[moved_box.left.y][moved_box.left.x] = '[';
+					// map[moved_box.right.y][moved_box.right.x] = ']';
 					return true;
 				}
 				return false;
@@ -311,11 +342,24 @@ void	move_robot(Point& robot_pos,
 		{
 			box = Box(pos.x - 1, pos.y);
 		}
-		if (move_box(box, map, diff))
+		std::deque<Box>	boxes_to_move {};
+		if (move_box(box, map, diff, boxes_to_move))
 		{
-			map[robot_pos.y][robot_pos.x] = '.';
+			for (auto it = boxes_to_move.begin(); it != boxes_to_move.end(); ++it)
+			{
+				Box		moving = *it;
+				Box		new_box = {moving.left + diff, moving.right + diff};
+				map[moving.left.y][moving.left.x] = '.';
+				map[moving.right.y][moving.right.x] = '.';
+				map[new_box.left.y][new_box.left.x] = '[';
+				map[new_box.right.y][new_box.right.x] = ']';
+			}
 			map[pos.y][pos.x] = '@';
+			map[robot_pos.y][robot_pos.x] = '.';
 			robot_pos = pos;
+			// map[robot_pos.y][robot_pos.x] = '.';
+			// map[pos.y][pos.x] = '@';
+			// robot_pos = pos;
 		}
 	}
 }

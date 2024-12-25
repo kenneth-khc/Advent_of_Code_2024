@@ -11,6 +11,8 @@ public:
 	Box(const Point&, const Point&);
 	~Box() = default;
 
+	bool	operator==(const Box&) const;
+
 	Point	left;
 	Point	right;
 };

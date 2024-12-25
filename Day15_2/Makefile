@@ -1,7 +1,7 @@
 NAME := day15_2
 
-CXX := c++
-CXXFLAGS := -Wall -Werror -Wextra -g3 -std=c++2a -O3
+CXX := g++
+CXXFLAGS := -Wall -Werror -Wextra -g3 -std=c++2a #-O3
 
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:.cpp=.o)
