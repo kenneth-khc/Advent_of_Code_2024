@@ -25,26 +25,27 @@ public:
 	bool	operator<(const Plot&) const;
 	bool	operator>(const Plot&) const;
 	Plot	operator-(const Plot&) const;
+	Plot&	operator=(const Plot&) = default;
 
-	const char			symbol;
+	char			type;
 	std::array<bool,4>	fenced;
 };
 
 Plot::Plot(int x, int y):
 Point {x, y},
-symbol {0},
+type {0},
 fenced {true, true, true, true}
 { }
 
 Plot::Plot(int x, int y, char c):
 Point {x, y},
-symbol {c},
+type {c},
 fenced {true, true, true, true}
 { }
 
 Plot::Plot(const Point& p, char c):
 Point {p},
-symbol {c},
+type {c},
 fenced {true, true, true, true}
 { }
 

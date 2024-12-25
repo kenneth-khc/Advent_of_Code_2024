@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <deque>
 #include <numeric>
+#include <cctype>
+#include <utility>
 #include "Point.hpp"
 #include "Plot.hpp"
 
@@ -63,8 +65,8 @@ std::vector<Plot>	get_neighbours(Map& map, Plot& p)
 {
 	static const std::vector<Plot>	diffs =
 	{
-		{0, +1},
 		{0, -1},
+		{0, +1},
 		{+1, 0},
 		{-1, 0}
 	};
@@ -73,35 +75,9 @@ std::vector<Plot>	get_neighbours(Map& map, Plot& p)
 	{
 		int	x = p.x + diff.x;
 		int	y = p.y + diff.y;
-		if (in_map(map, Plot(x, y)) && map[y][x] == p.symbol)
+		if (in_map(map, Plot(x, y)) && map[y][x] == p.type)
 		{
-			neighbours.push_back(Plot(x, y, p.symbol));
-		}
-	}
-	return neighbours;
-}
-
-std::vector<Plot>	get_other_region_neighbours(Map& map, Plot& p)
-{
-	static const std::vector<Plot>	diffs =
-	{
-		{0, +1},
-		{0, -1},
-		{+1, 0},
-		{-1, 0}
-	};
-	std::vector<Plot>	neighbours {};
-	for (const auto& diff : diffs)
-	{
-		int	x = p.x + diff.x;
-		int	y = p.y + diff.y;
-		if (in_map(map, Plot(x, y)) && map[y][x] != p.symbol)
-		{
-			neighbours.push_back(Plot(x, y, map[y][x]));
-		}
-		else if (!in_map(map, Plot(x, y)))
-		{
-			neighbours.push_back(Plot(x, y, 0));
+			neighbours.push_back(Plot(x, y, p.type));
 		}
 	}
 	return neighbours;
@@ -111,8 +87,8 @@ void	check_fencing(Plot& visiting, std::vector<Plot>& neighbours)
 {
 	static const std::vector<Plot>	diffs =
 	{
-		{0, +1},
 		{0, -1},
+		{0, +1},
 		{+1, 0},
 		{-1, 0}
 	};
@@ -130,7 +106,7 @@ void	check_fencing(Plot& visiting, std::vector<Plot>& neighbours)
 	}
 }
 
-void	clear_region_on_map(Map& map, std::vector<Plot>& region)
+void	clear_region_on_map(Map& map, std::set<Plot>& region)
 {
 	for (const auto& plot : region)
 	{
@@ -139,9 +115,9 @@ void	clear_region_on_map(Map& map, std::vector<Plot>& region)
 }
 
 using HashSet = std::unordered_set<Plot,Point::Hasher>;
-std::vector<Plot>	find_region(Map& map, Plot p)
+std::set<Plot>	find_region(Map& map, Plot p)
 {
-	std::vector<Plot>	region {};
+	std::set<Plot>		region {};
 	std::deque<Plot>	searching {};
 	HashSet				visited {};
 	searching.push_back(p);
@@ -159,207 +135,292 @@ std::vector<Plot>	find_region(Map& map, Plot p)
 				searching.push_back(neighbour);
 			}
 		}
-		// if (map[visiting.y][visiting.x] == p.symbol)
-		// {
-		region.push_back(visiting);
+		region.insert(visiting);
 		visited.insert(visiting);
-			// map[visiting.y][visiting.x] = 0;
-		// }
 	}
 	return region;
 }
 
-uint64_t	get_side_diff(std::array<bool,4> fences1, std::array<bool,4> fences2)
+bool	is_fenced(const Plot& plot, const Plot& prev_plot, const Direction& dir)
 {
-	uint64_t	diff {0};
-	for (size_t i = 0; i < 4; ++i)
-	{
-		if (fences1[i] == true && fences2[i] == false)
-			++diff;
-	}
-	return diff;
+	return plot.fenced[dir] && prev_plot.fenced[dir] == false;
 }
 
-std::vector<Plot>	find_edges(Map& map, std::vector<Plot>& region)
+std::vector<Plot>	get(const std::set<Plot>& region, Direction dir, int start_pos)
 {
-	std::vector<Plot>	edges {};
-
-	for (auto it = region.begin(); it != region.end(); ++it)
+	if (dir == NORTH || dir == SOUTH)
 	{
-		std::vector<Plot>	neighbours = get_other_region_neighbours(map, *it);
-		if (!neighbours.empty())
+		std::vector<Plot>	row {};
+		std::copy_if(region.begin(), region.end(), std::back_inserter(row),
+					[&](const Plot& p)
+					{
+						return p.y == start_pos;
+					});
+		return row;
+	}
+	else if (dir == EAST || dir == WEST)
+	{
+		std::vector<Plot>	column {};
+		std::copy_if(region.begin(), region.end(), std::back_inserter(column),
+					[&](const Plot& p)
+					{
+						return p.x == start_pos;
+					});
+		return column;
+	}
+	throw std::exception();
+}
+
+int	get_axis_diff(Direction dir, const Plot& curr, const Plot& prev)
+{
+	if (dir == NORTH || dir == SOUTH)
+	{
+		return curr.x - prev.x;
+	}
+	else
+	{
+		return curr.y - prev.y;
+	}
+}
+
+int	find_sides(const std::set<Plot>& region, Direction dir)
+{
+	int	sides {0};
+	int	start_pos, end_pos;
+	std::function<bool(const Point&, const Point&)> cmp;
+	if (dir == NORTH || dir == SOUTH)
+	{
+		start_pos = region.begin()->y;
+		end_pos = region.rbegin()->y + 1;
+		cmp = [](const Point& p1, const Point& p2) { return p1.x < p2.x; };
+	}
+	else if (dir == EAST || dir == WEST)
+	{
+		start_pos = region.begin()->x;
+		end_pos = region.rbegin()->x + 1;
+		cmp = [](const Point& p1, const Point& p2) { return p1.y < p2.y; };
+	}
+	while (start_pos < end_pos)
+	{
+		std::vector<Plot>	axis_plots = get(region, dir, start_pos);
+		std::sort(axis_plots.begin(), axis_plots.end(), cmp);
+		Plot				prev = axis_plots.front();
+		for (const Plot& plot : axis_plots)
 		{
-			edges.push_back(*it);
+			if ((plot.fenced[dir] && prev.fenced[dir] != plot.fenced[dir])
+				|| (plot.fenced[dir] && plot == axis_plots[0])
+				|| (plot.fenced[dir] && get_axis_diff(dir, plot, prev)))
+			{
+				++sides;
+			}
+			prev = plot;
 		}
-	}
-	return edges;
-}
-
-uint64_t	find_north_side(int x_start, int x_end, char region_type, std::vector<Plot> edges)
-{
-	std::vector<Plot>	edges_to_check {};
-	while (x_start < x_end+1)
-	{
-		int	lowest_y = std::numeric_limits<int>::max();
-		std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
-		{
-			if (p.x == x_start 
-			 && p.y < lowest_y
-			 && p.symbol == region_type)
-				lowest_y = p.y;
-		});
-		edges_to_check.push_back(Plot(x_start, lowest_y, region_type));
-		++x_start;
-	}
-	auto prev = edges_to_check.begin();
-	auto curr = prev + 1;
-	uint64_t	sides {1};
-	while (curr != edges_to_check.end())
-	{
-		if (curr->y - prev->y != 0)
-			++sides;
-		++curr;
-		++prev;
+		++start_pos;
 	}
 	return sides;
 }
 
-uint64_t	find_south_side(int x_start, int x_end, char region_type, std::vector<Plot> edges)
+uint64_t	find_north_side(int y_start, int y_end, std::set<Plot> region)
 {
-	std::vector<Plot>	edges_to_check {};
-	while (x_start < x_end+1)
-	{
-		int	highest_y = std::numeric_limits<int>::min();
-		std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
-		{
-			if (p.x == x_start 
-			 && p.y > highest_y
-			 && p.symbol == region_type)
-				highest_y = p.y;
-		});
-		edges_to_check.push_back(Plot(x_start, highest_y, region_type));
-		++x_start;
-	}
-	auto prev = edges_to_check.begin();
-	auto curr = prev + 1;
-	uint64_t	sides {1};
-	while (curr != edges_to_check.end())
-	{
-		if (curr->y - prev->y != 0)
-			++sides;
-		++curr;
-		++prev;
-	}
-	return sides;
-}
+	uint64_t	sides {0};
 
-uint64_t	find_west_side(int y_start, int y_end, char region_type, std::vector<Plot> edges)
-{
-	std::vector<Plot>	edges_to_check {};
-	while (y_start < y_end+1)
+	while (y_start < y_end + 1)
 	{
-		int	lowest_x = std::numeric_limits<int>::max();
-		std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+		std::vector<Plot>	row {};
+		std::copy_if(region.begin(),
+					 region.end(),
+					 std::back_inserter(row),
+					 [&](const Plot& p)
+					{
+						return p.y == y_start;
+					});
+		std::sort(row.begin(), row.end(), [](const Plot& p1, const Plot& p2)
 		{
-			if (p.y == y_start 
-			 && p.x < lowest_x
-			 && p.symbol == region_type)
-				lowest_x = p.x;
+			return p1.x < p2.x;
 		});
-		edges_to_check.push_back(Plot(lowest_x, y_start, region_type));
+		auto	c = row.begin();
+		auto 	p = c;
+		std::vector<Plot>::iterator	curr = row.begin();
+		std::vector<Plot>::iterator	prev = curr;
+		while (curr != row.end())
+		{
+			if ((c->fenced[NORTH] && p->fenced[NORTH] != c->fenced[NORTH]) ||
+				(c->fenced[NORTH] && c == row.begin()) ||
+				(c->fenced[NORTH] && c->x - p->x > 1))
+			{
+				++sides;
+			}
+			prev = curr;
+			++curr;
+		}
 		++y_start;
 	}
-	auto prev = edges_to_check.begin();
-	auto curr = prev + 1;
-	uint64_t	sides {1};
-	while (curr != edges_to_check.end())
-	{
-		if (curr->x - prev->x != 0)
-			++sides;
-		++curr;
-		++prev;
-	}
+	std::cout << "Found " << sides << " north sides\n";
 	return sides;
 }
 
-uint64_t	find_east_side(int y_start, int y_end, char region_type, std::vector<Plot> edges)
+uint64_t	find_south_side(int y_start, int y_end, std::set<Plot> region)
 {
-	std::vector<Plot>	edges_to_check {};
-	while (y_start < y_end+1)
+	uint64_t	sides {0};
+
+	while (y_start < y_end + 1)
 	{
-		int	highest_x = std::numeric_limits<int>::min();
-		std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+		std::vector<Plot>	row {};
+		std::copy_if(region.begin(),
+					 region.end(),
+					 std::back_inserter(row),
+					 [&](const Plot& p)
+					{
+						return p.y == y_start;
+					});
+		std::sort(row.begin(), row.end(), [](const Plot& p1, const Plot& p2)
 		{
-			if (p.y == y_start 
-			 && p.x > highest_x
-			 && p.symbol == region_type)
-				highest_x = p.x;
+			return p1.x < p2.x;
 		});
-		edges_to_check.push_back(Plot(highest_x, y_start, region_type));
+		auto	c = row.begin();
+		auto 	p = c;
+		while (c != row.end())
+		{
+			if ((c->fenced[SOUTH] && p->fenced[SOUTH] != c->fenced[SOUTH]) ||
+				(c->fenced[SOUTH] && c == row.begin()) ||
+				(c->fenced[SOUTH] && c->x - p->x > 1))
+			{
+				++sides;
+			}
+			p = c;
+			++c;
+		}
 		++y_start;
 	}
-	auto prev = edges_to_check.begin();
-	auto curr = prev + 1;
-	uint64_t	sides {1};
-	while (curr != edges_to_check.end())
+	std::cout << "Found " << sides << " south sides\n";
+	return sides;
+}
+
+uint64_t	find_east_side(int x_start, int x_end, std::set<Plot> region)
+{
+	uint64_t	sides {0};
+
+	while (x_start < x_end+1)
 	{
-		if (curr->x - prev->x != 0)
-			++sides;
-		++curr;
-		++prev;
+		std::vector<Plot>	column {};
+		std::copy_if(region.begin(),
+					 region.end(),
+					 std::back_inserter(column),
+					 [&](const Plot& p)
+					{
+						return p.x == x_start;
+					});
+		std::sort(column.begin(), column.end(), [](const Plot& p1, const Plot& p2)
+		{
+			return p1.y < p2.y;
+		});
+		auto	c = column.begin();
+		auto 	p = c;
+		while (c != column.end())
+		{
+			if ((c->fenced[EAST] && p->fenced[EAST] != c->fenced[EAST]) ||
+				(c->fenced[EAST] && c == column.begin()) ||
+				(c->fenced[EAST] && c->y - p->y > 1))
+			{
+				++sides;
+			}
+			p = c;
+			++c;
+		}
+		++x_start;
 	}
+	std::cout << "Found " << sides << " east sides\n";
+	return sides;
+}
+
+uint64_t	find_west_side(int x_start, int x_end, std::set<Plot> region)
+{
+	uint64_t	sides {0};
+
+	while (x_start < x_end+1)
+	{
+		std::vector<Plot>	column {};
+		std::copy_if(region.begin(),
+					 region.end(),
+					 std::back_inserter(column),
+					 [&](const Plot& p)
+					{
+						return p.x == x_start;
+					});
+		std::sort(column.begin(), column.end(), [](const Plot& p1, const Plot& p2)
+		{
+			return p1.y < p2.y;
+		});
+		auto c = column.begin();
+		auto p = c;
+		while (c != column.end())
+		{
+			if ((c->fenced[WEST] && p->fenced[WEST] != c->fenced[WEST]) ||
+				(c->fenced[WEST] && c == column.begin()) ||
+				(c->fenced[WEST] && c->y - p->y > 1))
+			{
+				++sides;
+			}
+			p = c;
+			++c;
+		}
+		++x_start;
+	}
+	std::cout << "Found " << sides << " west sides\n";
 	return sides;
 }
 
 uint64_t	calculate_region_price(Map& map, Point p)
 {
 	char				plant_type = map[p.y][p.x];
-	std::vector<Plot>	region = find_region(map, Plot(p, plant_type));
-	std::vector<Plot>	edges = find_edges(map, region);
+	std::set<Plot>		region = find_region(map, Plot(p, plant_type));
 	uint64_t			total_area = region.size();
 	uint64_t			total_sides {0};
 
 	int	x_start = std::numeric_limits<int>::max();
-	std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+	std::for_each(region.begin(), region.end(), [&](const Plot& p)
 	{
 		if (p.x < x_start)
 			x_start = p.x;
 	});
 	int	x_end = std::numeric_limits<int>::min();
-	std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+	std::for_each(region.begin(), region.end(), [&](const Plot& p)
 	{
 		if (p.x > x_end)
 			x_end = p.x;
 	});
-
-	total_sides += find_north_side(x_start, x_end, plant_type, edges);
-	total_sides += find_south_side(x_start, x_end, plant_type, edges);
-
 	int	y_start = std::numeric_limits<int>::max();
-	std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+	std::for_each(region.begin(), region.end(), [&](const Plot& p)
 	{
 		if (p.y < y_start)
 			y_start = p.y;
 	});
 	int	y_end = std::numeric_limits<int>::min();
-	std::for_each(edges.begin(), edges.end(), [&](const Plot& p)
+	std::for_each(region.begin(), region.end(), [&](const Plot& p)
 	{
 		if (p.y > y_end)
 			y_end = p.y;
 	});
 
-	total_sides += find_west_side(y_start, y_end, plant_type, edges);
-	total_sides += find_east_side(y_start, y_end, plant_type, edges);
+	total_sides += find_north_side(y_start, y_end, region);
+	total_sides += find_south_side(y_start, y_end, region);
+	total_sides += find_east_side(x_start, x_end, region);
+	total_sides += find_west_side(x_start, x_end, region);
 
-	std::cout << "Found " << total_sides << " total sides for region " << plant_type << '\n';
-
+	// total_sides += find_sides(region, NORTH);
+	// total_sides += find_sides(region, SOUTH);
+	// total_sides += find_sides(region, EAST);
+	// total_sides += find_sides(region, WEST);
 	clear_region_on_map(map, region);
+	std::cout << "Region " << plant_type << ": "
+			  << total_area << " area * "
+			<< total_sides << " sides\n";
 	return total_area * total_sides;
 }
 
 int	main()
 {
-	Map	map = parse("example2.txt");
+	Map	map = parse("example5.txt");
 
 	uint64_t	total_price {0};
 	for (size_t row = 0; row < map.size(); ++row)
