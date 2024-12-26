@@ -26,6 +26,7 @@ public:
 	Point	operator+(const Point&) const;
 	Point&	operator-=(const Point&);
 	Point	operator-(const Point&) const;
+	friend std::ostream&	operator<<(std::ostream&, Point<>&);
 	friend std::ostream&	operator<<(std::ostream&, const Point<>&);
 	Point&	operator=(const Point&) = default;
 

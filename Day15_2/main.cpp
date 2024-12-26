@@ -49,7 +49,7 @@ void	print(std::deque<char> movements)
 
 int	main()
 {
-	std::ifstream					file {"input.txt"};
+	std::ifstream					file {"example.txt"};
 	Point							robot_pos;
 	std::vector<std::vector<char>>	map = parse_map(file, robot_pos);
 	std::deque<char>				movement = parse_movement(file);
@@ -81,13 +81,13 @@ int	main()
 			d.x = +1; d.y = 0;
 			std::cout << "Moving right\t";
 		}
-		// print(movement);
-		// std::cin.get();
+		print(movement);
+		std::cin.get();
 		move_robot(robot_pos, map, d);
 		movement.pop_front();
-		// print_map(map);
-		// std::cout <<'\n';
-		// std::this_thread::sleep_for(std::chrono::milliseconds(250));
+		print_map(map);
+		std::cout <<'\n';
+		std::this_thread::sleep_for(std::chrono::milliseconds(250));
 	}
 	std::cout << "Done map\n";
 	print_map(map);

@@ -80,6 +80,13 @@ Point<Scalar>	Point<Scalar>::operator-(const Point& rhs) const
 }
 
 template<typename Scalar>
+std::ostream&	operator<<(std::ostream& os, Point<Scalar>& point)
+{
+	os << "(" << point.x << ", " << point.y << ")";
+	return os;
+}
+
+template<typename Scalar>
 std::ostream&	operator<<(std::ostream& os, const Point<Scalar>& point)
 {
 	os << "(" << point.x << ", " << point.y << ")";
