@@ -19,7 +19,7 @@ parse(const std::string& filename, Towels& available)
 	auto	end = std::sregex_iterator {};
 	while (curr != end)
 	{
-		std::smatch		match = *curr;
+		std::smatch	match = *curr;
 		available.push_back(match.str());
 		++curr;
 	}
@@ -30,39 +30,81 @@ parse(const std::string& filename, Towels& available)
 	return requirements;
 }
 
-bool	match(const char* word, const std::string& letters)
+template<typename T>
+void	print(T t)
 {
-	size_t	i = 0;
-	while (letters[i] == word[i])
-	{
-		i++;
-	}
-	return i >= letters.length();
+	std::cout << t;
 }
 
-bool	match_towels(std::string requirement, Towels& available)
+void	print(const std::vector<std::string>& strings)
 {
-	size_t	i = 0;
-	for (auto& towel : available)
+	for (auto it = strings.begin(); it != strings.end(); ++it)
 	{
-		if (match(&requirement[i], towel))
+		print(*it);
+		if (it != strings.end() - 1)
 		{
-			i += towel.length();
+			print(" | ");
 		}
 	}
-	return i >= requirement.length();
+	print('\n');
 }
 
-int	main()
+bool	match(std::string design, Towels& available)
 {
-	Towels	available_towels {};
-	Towels	requirements = parse("example.txt", available_towels);
-
-	int		possible_designs {0};
-	for (auto& requirement : requirements)
+	// Done matching the entire design
+	if (design.empty())
 	{
-		if (match_towels(requirement, available_towels))
-			++possible_designs;
+		return true;
 	}
-	std::cout << "There are " << possible_designs << " possible designs" << std::endl;
+	for (const std::string& towel : available)
+	{
+		if (design.starts_with(towel))
+		{
+			std::string	remain = design.substr(towel.length());
+			if (match(remain, available))
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+int	calculate_possible_designs(Towels& available, Towels& designs)
+{
+	int	possible_designs {0};
+	for (std::string design : designs)
+	{
+		print("Matching with " + design + '\n');
+		if (match(design, available))
+		{
+			print("\e[0;32m" + design + " is possible!\n" + "\e[0;0m");
+			++possible_designs;
+		}
+		else
+		{
+			print("\e[0;31m" + design + " is impossible!\n" + "\e[0;0m");
+		}
+	}
+	return possible_designs;
+}
+
+int	main(int argc, char** argv)
+{
+	if (argc != 2)
+		return 1;
+
+	Towels	available_towels {};
+	Towels	requirements = parse(argv[1], available_towels);
+
+	std::cout << "Towels available: ";
+	print(available_towels);
+
+	int	possible_designs = calculate_possible_designs(available_towels, requirements);
+
+	print("There are ");
+	print(possible_designs);
+	print(" possible designs\n");
+
+	return 0;
 }
